@@ -1,7 +1,31 @@
 import re #To perform the search and replace.
 
-from ..Script import Script
+try:
+    from ..Script import Script
+    runsStandalone = False
+except:
+    from typing import Optional, Any, Dict, TYPE_CHECKING, List
+    import collections
+    import json
+    import sys
 
+    class Script(object):
+        def injectSettingData(self, jsonString):
+            self._settingObj = json.loads(jsonString)
+
+        def getSettingDataString(self):
+            return "";
+
+        def getSettingValueByKey(self, key: str) -> Any:
+            try:
+                return self._settingsObj[key]
+            except:
+                pass
+            if not '_defaultSettingsObj' in dir(self):
+                self._defaultSettingObj = json.loads(self.getSettingDataString())
+            return self._defaultSettingObj["settings"][key]["default_value"]
+
+    runsStandalone = True
 
 class PenColorizer(Script):
     """Performs a search-and-replace on all g-code.
@@ -372,3 +396,56 @@ class PenColorizer(Script):
             data[layer_number] = result
 
         return data
+
+if runsStandalone == True:
+    script = PenColorizer()
+    
+    #script.setSettingValues('{"FirstPenXPosition": 303.0}')
+
+    inputFilename = sys.argv[1]
+    print("Running script on " + inputFilename)
+    with open(inputFilename) as file:
+        lines = file.readlines()
+
+    layersLineBuffers = []
+    lineBuffer = []
+    for i in range(0, len(lines)):
+        line = lines[i]
+
+        isLayerStart = line.startswith(";LAYER:") or line.startswith(";Generated with")
+        isLayerEnd = line.startswith(";TIME_ELAPSED")
+
+        if isLayerStart or isLayerEnd:
+            if isLayerEnd:
+                lineBuffer.append(line)
+            if len(lineBuffer) > 0:
+                layersLineBuffers.append(lineBuffer.copy())
+                lineBuffer.clear()
+
+        if not isLayerEnd:
+            lineBuffer.append(line)
+    
+    if len(lineBuffer) > 0:
+        layersLineBuffers.append(lineBuffer.copy())
+
+    # add comment
+    layersLineBuffers[0].insert(len(layersLineBuffers[0]), ";POSTPROCESSED\n")
+
+    # split fist line of last layer to its own layer so we conform with whatever cura does
+    lastLayerLineBuffer = layersLineBuffers[len(layersLineBuffers)-1].copy();
+    layersLineBuffers[len(layersLineBuffers)-1] = [lastLayerLineBuffer[0]]
+    lastLayerLineBuffer.remove(lastLayerLineBuffer[0])
+    layersLineBuffers.append(lastLayerLineBuffer)
+
+    # merge layer lines to string
+    layers = []
+    for i in range(0, len(layersLineBuffers)):
+        layers.append("".join(layersLineBuffers[i]))
+
+    layers = script.execute(layers)
+
+    outputFilename = inputFilename.partition(".gcode")[0] + ".processed.gcode"
+    print("Writing processed file to " + outputFilename);
+    with open(outputFilename, "w") as file:
+        for i in range(0, len(layers)):
+            file.write(layers[i])
