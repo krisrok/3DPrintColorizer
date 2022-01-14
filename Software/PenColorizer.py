@@ -358,11 +358,11 @@ class PenColorizer(Script):
                 
                 #filter out extruder heating commands
                 elif "M109" in line and isLayer:
-                    print("skip")
+                     newlines.append(";" + line)
                 elif "M104" in line and isLayer:
-                    print("skip") 
+                     newlines.append(";" + line)
                 elif "M105" in line and isLayer:
-                    print("skip")  
+                     newlines.append(";" + line)
                     
                 else:
                     newlines.append(line)
