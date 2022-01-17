@@ -329,7 +329,7 @@ class PenColorizer(Script):
                     newlines.append(";" + line)
                 
                 #filter out extruder related commands
-                elif "T1" in line or "T2" in line or "T3" in line or "T4" in line or "T5" in line or "T6" in line or "T7" in line or "T8" in line:
+                elif re.search(r'T[1-8](\s|$)', line):
                     newlines.append(";" + line)
                 
                 #filter out extruder heating commands
