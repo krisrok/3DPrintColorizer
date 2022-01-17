@@ -412,6 +412,7 @@ if runsStandalone == True:
 
     configFilename = args.config
     inputFilename = args.input
+    outputFilename = args.output
 
 
     script = PenColorizer()
@@ -474,7 +475,11 @@ if runsStandalone == True:
 
     layers = script.execute(layers)
 
-    outputFilename = inputFilename.partition(".gcode")[0] + ".processed.gcode"
+
+    # write output gcode file
+    if outputFilename == None:
+        outputFilename = inputFilename.partition(".gcode")[0] + ".processed.gcode"
+
     print("Writing processed file to " + outputFilename);
     with open(outputFilename, "w") as file:
         for i in range(0, len(layers)):
