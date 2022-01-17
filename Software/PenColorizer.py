@@ -401,13 +401,10 @@ if runsStandalone == True:
     import argparse
 
     parser = argparse.ArgumentParser(description='Postprocess gcode file to add colors using pens.', exit_on_error=True)
-    parser.add_argument('-c', '--config', help='path to the config json file')
-    parser.add_argument('-i', '--input', help='path to the input gcode file')
+    parser.add_argument('-c', '--config', help='path to the config json file', required=True)
+    parser.add_argument('-i', '--input', help='path to the input gcode file', required=True)
+    parser.add_argument('-o', '--output', help='path to the output gcode file', required=False)
 
-    if len(sys.argv) < 3:
-        parser.print_help()
-        exit()
-    
     args = parser.parse_args()
 
     configFilename = args.config
