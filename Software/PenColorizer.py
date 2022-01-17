@@ -397,6 +397,7 @@ class PenColorizer(Script):
 
         return data
 
+# run this if not executed via Cura
 if runsStandalone == True:
     import argparse
 
@@ -411,9 +412,10 @@ if runsStandalone == True:
     inputFilename = args.input
     outputFilename = args.output
 
-
+    # create script instance
     script = PenColorizer()
 
+    # read config
     hasConfig = False
     try:
         print("Reading config from " + configFilename);
@@ -429,6 +431,8 @@ if runsStandalone == True:
         print("### Defaults will most likely not work for your printer and can damage your machine! ###")
         input("Press Enter to continue anyway...")
 
+    
+    # read input gcode file
     print("Running script on " + inputFilename)
     with open(inputFilename) as file:
         lines = file.readlines()
@@ -470,6 +474,8 @@ if runsStandalone == True:
     for i in range(0, len(layersLineBuffers)):
         layers.append("".join(layersLineBuffers[i]))
 
+
+    # execute script
     layers = script.execute(layers)
 
 
