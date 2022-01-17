@@ -398,11 +398,39 @@ class PenColorizer(Script):
         return data
 
 if runsStandalone == True:
-    script = PenColorizer()
-    
-    #script.setSettingValues('{"FirstPenXPosition": 303.0}')
+    import argparse
 
-    inputFilename = sys.argv[1]
+    parser = argparse.ArgumentParser(description='Postprocess gcode file to add colors using pens.', exit_on_error=True)
+    parser.add_argument('-c', '--config', help='path to the config json file')
+    parser.add_argument('-i', '--input', help='path to the input gcode file')
+
+    if len(sys.argv) < 3:
+        parser.print_help()
+        exit()
+    
+    args = parser.parse_args()
+
+    configFilename = args.config
+    inputFilename = args.input
+
+
+    script = PenColorizer()
+
+    hasConfig = False
+    try:
+        print("Reading config from " + configFilename);
+        with open(configFilename, "r") as file:
+            script.injectSettingData(file.read())
+        hasConfig = True
+    except FileNotFoundError:
+        print("Config not found, falling back to defaults!")
+    except BaseException as e:
+        print("Error reading config: " + str(e))
+
+    if hasConfig == False:
+        print("### Defaults will most likely not work for your printer and can damage your machine! ###")
+        input("Press Enter to continue anyway...")
+
     print("Running script on " + inputFilename)
     with open(inputFilename) as file:
         lines = file.readlines()
@@ -412,6 +440,8 @@ if runsStandalone == True:
     for i in range(0, len(lines)):
         line = lines[i]
 
+        # check if a (virtual) layer starts here
+        # virtual layers are the comment block at the beginning and the start gcode sequence
         isLayerStart = line.startswith(";LAYER:") or line.startswith(";Generated with")
         isLayerEnd = line.startswith(";TIME_ELAPSED")
 
@@ -428,7 +458,7 @@ if runsStandalone == True:
     if len(lineBuffer) > 0:
         layersLineBuffers.append(lineBuffer.copy())
 
-    # add comment
+    # add comment stating this file was postprocessed
     layersLineBuffers[0].insert(len(layersLineBuffers[0]), ";POSTPROCESSED\n")
 
     # split fist line of last layer to its own layer so we conform with whatever cura does
