@@ -18,7 +18,7 @@ except:
 
         def getSettingValueByKey(self, key: str) -> Any:
             try:
-                return self._settingsObj[key]
+                return self._settingObj[key]
             except:
                 pass
             if not '_defaultSettingsObj' in dir(self):
@@ -93,28 +93,40 @@ class PenColorizer(Script):
             }
         }"""
 
+    global getCoord
+    def getCoord(gcode, params):
+        return re.findall(r'([' + params + '][+-]?[0-9]*[.]?[0-9]+)', gcode)
+
+    global getValue
+    def getValue(coord, param):
+        return next((float(i[1:]) for i in coord if i.startswith(param)), None)
+
     def getPen(self, pen):    
         penside = pen % 2
         penoffset = float(int(pen / 2)) * 68.0
         
         if penside == 0:
-            getlines = [";Get pen " + str(pen),
-                        "G0 F5000 ; set speed fast",
-                        "G0 X" + str(self.penstartx + penoffset) + " Z" + str(self.penstarty - 152.0) + " ;go under pen",
-                        "G0 F2000 ; set speed slow",
+            getlines = ["; get pen " + str(pen+1),
+                        "G0 F" + str(self.speedTravelFast) + " ; set speed fast",
+                        "G0 X" + str(self.penstartx + penoffset) + " Z" + str(self.penstarty - 152.0) + " ; go under pen",
+                        "G0 F" + str(self.speedTravelSlow) + " ; set speed slow",
                         "G0 X" + str(self.penstartx + penoffset) + " Z" + str(self.penstarty) + " ; lift pen",
                         "G0 X" + str(self.penstartx + 20.5 + penoffset) + " Z" + str(self.penstarty) + " ; move pen right",
-                        "G0 F5000 ; set speed fast",
+                        "G0 F" + str(self.speedTravelFast) + " ; set speed fast",
                         "G0 X" + str(self.penstartx + 20.5 + penoffset) + " Z" + str(self.penstarty - 152.0) + " ; lower pen"]
         else:
-            getlines = [";Get pen " + str(pen),
-                        "G0 F5000 ; set speed fast",
-                        "G0 X" + str(self.penstartx + 41.0 + penoffset) + " Z" + str(self.penstarty - 152.0) + " ;go under pen",
-                        "G0 F2000 ; set speed slow",
+            getlines = ["; get pen " + str(pen+1),
+                        "G0 F" + str(self.speedTravelFast) + " ; set speed fast",
+                        "G0 X" + str(self.penstartx + 41.0 + penoffset) + " Z" + str(self.penstarty - 152.0) + " ; go under pen",
+                        "G0 F" + str(self.speedTravelSlow) + " ; set speed slow",
                         "G0 X" + str(self.penstartx + 41.0 + penoffset) + " Z" + str(self.penstarty) + " ; lift pen",
                         "G0 X" + str(self.penstartx + 20.5 + penoffset) + " Z" + str(self.penstarty) + " ; move pen right",
-                        "G0 F5000 ; set speed fast",
+                        "G0 F" + str(self.speedTravelFast) + " ; set speed fast",
                         "G0 X" + str(self.penstartx + 20.5 + penoffset) + " Z" + str(self.penstarty - 152.0) + " ; lower pen"]
+
+        getlines[1:1] = [ "M203 Z" + str(self.feedrateZFast) + " ; sets faster z max feedrate" ]
+        getlines.append(  "M203 Z" + str(self.feedrateZSlow) + " ; restore z max feedrate")
+
         return getlines
         
     def putPen(self, pen):
@@ -122,47 +134,51 @@ class PenColorizer(Script):
         penoffset = float(int(pen / 2)) * 68.0
         
         if penside == 0:
-            putlines = [";put pen " + str(pen),
-                        "G0 F5000 ; set speed fast",
+            putlines = ["; put pen " + str(pen+1),
+                        "G0 F" + str(self.speedTravelFast) + " ; set speed fast",
                         "G0 X" + str(self.penstartx + 20.5 + penoffset) + " Z" + str(self.penstarty - 152.0) + " ; go under pen",
                         "G0 X" + str(self.penstartx + 20.5 + penoffset) + " Z" + str(self.penstarty) + " ; lift pen",
-                        "G0 F2000 ; set speed slow",
+                        "G0 F" + str(self.speedTravelSlow) + " ; set speed slow",
                         "G0 X" + str(self.penstartx + penoffset) + " Z" + str(self.penstarty) + " ; move pen left",
                         "G0 X" + str(self.penstartx + penoffset) + " Z" + str(self.penstarty - 152.0) + " ; lower pen",
-                        "G0 F5000 ; set speed fast", ""]
+                        "G0 F" + str(self.speedTravelFast) + " ; set speed fast", ""]
         else:
-            putlines = [";put pen " + str(pen),
-                        "G0 F5000 ; set speed fast",
+            putlines = ["; put pen " + str(pen+1),
+                        "G0 F" + str(self.speedTravelFast) + " ; set speed fast",
                         "G0 X" + str(self.penstartx + 20.5 + penoffset) + " Z" + str(self.penstarty - 152.0) + " ; go under pen",
                         "G0 X" + str(self.penstartx + 20.5 + penoffset) + " Z" + str(self.penstarty) + " ; lift pen",
-                        "G0 F2000 ; set speed slow",
+                        "G0 F" + str(self.speedTravelSlow) + " ; set speed slow",
                         "G0 X" + str(self.penstartx + 41.0 + penoffset) + " Z" + str(self.penstarty) + " ; move pen left",
                         "G0 X" + str(self.penstartx + 41.0 + penoffset) + " Z" + str(self.penstarty - 152.0) + " ; lower pen",
-                        "G0 F5000 ; set speed fast", ""]
+                        "G0 F" + str(self.speedTravelFast) + " ; set speed fast", ""]
+
+        putlines[1:1] = [ "M203 Z" + str(self.feedrateZFast) + " ; sets faster z max feedrate" ]
+        putlines.append(  "M203 Z" + str(self.feedrateZSlow) + " ; restore z max feedrate")
+
         return putlines
 
     def offset(self, gcode, zoffset):
-        coord = re.findall(r'[XYZF].?\d+(?:.\d+)?', gcode)
+        coord = getCoord(gcode, "FXYZ")
         newgcode = gcode[:2]
         
-        F = next((i for i in coord if i.startswith('F')), None)
+        F = getValue(coord, "F")
         if F != None:
             newgcode += " " + "F3600"#F
             
-        X = next((i for i in coord if i.startswith('X')), None)
+        X = getValue(coord, "X")
         if X != None:
-            newgcode += " X" + "{:0.3f}".format((float(X[1:]) + self.xoffset))
+            newgcode += " X" + "{:0.3f}".format(X + self.xoffset)
             
-        Y = next((i for i in coord if i.startswith('Y')), None)
+        Y = getValue(coord, "Y")
         if Y != None:
-            newgcode += " Y" + "{:0.3f}".format((float(Y[1:]) + self.yoffset))
+            newgcode += " Y" + "{:0.3f}".format(Y + self.yoffset)
             
-        Z = next((i for i in coord if i.startswith('Z')), None)
+        Z = getValue(coord, "Z")
         if Z != None:
-            newgcode += " Z" + "{:0.3f}".format((float(Z[1:]) + self.zoffset + zoffset))
+            newgcode += " Z" + "{:0.3f}".format(Z + self.zoffset + zoffset)
         
         return newgcode
-        
+
     def lift(self, gcode, zoffset):
         coord = re.findall(r'[XYZF].?\d+(?:.\d+)?', gcode)
         newgcode = gcode[:2]
@@ -199,25 +215,30 @@ class PenColorizer(Script):
                 
         return "; nothing found"
     
-    def addExplicitZ(self, lines):
-        newlines = []
+    def addExplicitZ(self, line):
+        parts = line.partition(";")
 
-        for line in lines:
-            if "G0" in line or "G1" in line:
-                newline = line
+        newline = parts[0]
+
+        if bool(newline.strip()) == False:
+            return line
             
-                coord = re.findall(r'[XYZF].?\d+(?:.\d+)?', line)
-                Z = next((i for i in coord if i.startswith('Z')), None)
-                if Z != None:
-                    self.lastZ = float(Z[1:])
-                else:
-                    newline += " Z" + "{:0.3f}".format(self.lastZ)
-                    
-                newlines.append(newline)
-            else:
-                newlines.append(line)
-                    
-        return newlines
+        coord = getCoord(line, "Z")
+        Z = getValue(coord, "Z")
+        if Z == None:
+            newline += " Z" + "{:0.3f}".format(self.lastZ)
+
+        return "".join([newline, parts[1], parts[2]])
+
+    def __init__(self):
+        self.layerPartMarker = ";LAYER:"
+        self.typePattern = re.compile(r'^;TYPE:(.*)')
+        self.typePrimeTowerMarker = "PRIME-TOWER"
+        self.typeIncludedMarkers = ["WALL-INNER", "WALL-OUTER"]
+        self.speedTravelFast = 10800
+        self.speedTravelSlow = 2000
+        self.feedrateZFast = 30
+        self.feedrateZSlow = 12
         
     def execute(self, data):
     
@@ -238,29 +259,33 @@ class PenColorizer(Script):
         interlace = self.getSettingValueByKey("Interlace")
         
         isRetractMove = True
-    
+
+        layer_counter = -1
         #iterate layers
         curT = 0
         for layer_number, layer in enumerate(data):
             lines = layer.split("\n")
-            lines = self.addExplicitZ(lines)
+            #lines = self.addExplicitZ(lines)
             
             newlines = []
-            isLayer = lines[0].startswith(";LAYER")
-            
+            isLayer = lines[0].startswith(self.layerPartMarker)
+
+            if isLayer:
+                layer_counter += 1
+
             #get pen & set height
-            zheight = layerheight * (layer_number - 1)
+            #zheight = layerheight * (layer_number - 1)
             
             #setup drawbuffers
             drawlines = [None] * 8
+            drawlinesHasData = [False] * 8
             for i in range(8):
-                drawlines[i] = ["; Draw Layer " + str(i)]
+                drawlines[i] = ["; draw color " + str(i+1)]
             
             isPrimeTower = False
-            primelines = [";moved prime tower"]
-            skirtlines = [";duplicated skirt lines"]
+            primelines = ["; moved prime tower"]
 
-            isSkirt = False
+            shouldBeDrawn = False
             
             linestoskip = 0
             
@@ -277,31 +302,41 @@ class PenColorizer(Script):
                 if ";Layer height:" in line:
                     layerheight = float(line[14:])
                     newlines.append(line)
+                    continue
+
                 #type change
-                elif ";TYPE:" in line:
-                    if ";TYPE:PRIME-TOWER" in line:
+                m = self.typePattern.search(line)
+                if m:
+                    if m.groups(0)[0] == self.typePrimeTowerMarker:
                         isPrimeTower = True
-                        isSkirt = False
-                    elif ";TYPE:SKIRT" in line or ";TYPE:SUPPORT-INTERFACE" in line or ";TYPE:FILL" in line:
-                        isSkirt = True
+                        shouldBeDrawn = False
+                    elif next((em for em in self.typeIncludedMarkers if m.groups(0)[0] == em), None) != None:
+                        if(curT > 0):
+                            drawlines[curT - 1].append("; drawing type: " + m.groups(0)[0])
+                        shouldBeDrawn = True
                         isPrimeTower = False
                     else:
-                        isSkirt = False
+                        shouldBeDrawn = False
                         isPrimeTower = False
                     
                     newlines.append(line)
+                    continue
             
                 #offset G1 codes & remember curZ
-                elif "G0" in line or "G1" in line:
-                    coord = re.findall(r'[XYZEF].?\d+(?:.\d+)?', line)
+                if "G0" in line or "G1" in line:
+                    coord = getCoord(line, "XYZEF")
+
+                    Z = getValue(coord, "Z")
+                    if Z != None:
+                        self.lastZ = Z
                 
                     #should we draw?
-                    draw = curT >= 0 and isSkirt == False and isPrimeTower == False and ((layer_number + curT) % 2 == 0 or interlace == False)
+                    draw = curT > 0 and layer_counter >= 0 and shouldBeDrawn == True and isPrimeTower == False and ((layer_counter + curT) % 2 == 0 or interlace == False)
                 
                     #retract move?
-                    E = next((i for i in coord if i.startswith('E')), None)
+                    E = getValue(coord, "E")
                     if E != None:
-                        if float(E[1:]) < 0.0: 
+                        if E < 0.0: 
                             isRetractMove = True
                             zhopOffset = 3.0 
                         else:
@@ -325,8 +360,9 @@ class PenColorizer(Script):
                         wasG0move = False'''
                     
                 
-                    if  draw == True:
-                        drawlines[curT].append(self.offset(line, zhopOffset))
+                    if draw == True:
+                        drawlinesHasData[curT - 1] = True
+                        drawlines[curT - 1].append(self.offset(self.addExplicitZ(line), zhopOffset))
                        
                     if isPrimeTower:
                         primelines.append(line)
@@ -346,51 +382,56 @@ class PenColorizer(Script):
                     Z = next((i for i in coord if i.startswith('Z')), None)
                     if Z != None:
                         lastlayerz = float(Z[1:])
+
+                    continue
                                             
                 #filter out all dual extruder related gcodes but log which extruder should be active right now
-                elif line.startswith("T"):
-                    curT = int(line[1:]) - 1
+                if re.match(r'^T[0-8]', line):
+                    curT = int(line[1:2])
                     newlines.append(";" + line)
+                    continue
                 
                 #filter out extruder related commands
-                elif re.search(r'T[1-8](\s|$)', line):
+                if re.search(r'T[1-8](\s|$)', line):
                     newlines.append(";" + line)
-                
+                    continue
+
                 #filter out extruder heating commands
-                elif "M109" in line and isLayer:
-                     newlines.append(";" + line)
-                elif "M104" in line and isLayer:
-                     newlines.append(";" + line)
-                elif "M105" in line and isLayer:
-                     newlines.append(";" + line)
-                    
-                else:
-                    newlines.append(line)
+                #elif "M109" in line and isLayer:
+                #     newlines.append(";" + line)
+                #elif "M104" in line and isLayer:
+                #     newlines.append(";" + line)
+                #elif "M105" in line and isLayer:
+                #     newlines.append(";" + line)
+
+                # just append the new line if we do not need to alter it
+                newlines.append(line)
 
             #move prime tower to layer startswith
             #primelines.append(";end prime tower")
             #if len(primelines) > 3:
             #    newlines[2:2] = primelines
-                
+            print()
             #add drawlines
-            if isLayer:# and layer_number % 2 == 0:
-                newlines += ["G1 F1500 E-" + str(drawrectract)] #retract before drawing
+            if isLayer and next((l for l in drawlinesHasData if l == True), None) != None:
+                newlines += " ; start drawing"
+                newlines += ["G1 F1500 E-" + str(drawrectract) + " ; retract before drawing"] #retract before drawing
                 
                 for i in range(8):
-                    if len(drawlines[i]) <= 1:
+                    if drawlinesHasData[i] == False:
                         continue
                         
-                    drawlines[i][1:1] = [self.lift(self.getFirstPos(drawlines[i]), 3.0) + ";lower pen from above the first spot"] # lower pen from above the first spot
+                    drawlines[i][1:1] = [self.lift(self.getFirstPos(drawlines[i]), 3.0) + " ; lower pen from above the first spot"] # lower pen from above the first spot
                     drawlines[i][1:1] = self.getPen(i)
-                    drawlines[i] += [self.lift(drawlines[i][-1], 3.0) + "; raise pen from the last spot"] # raise pen from the last spot
+                    drawlines[i] += [self.lift(drawlines[i][-1], 3.0) + " ; raise pen from the last spot"] # raise pen from the last spot
                     drawlines[i] += self.putPen(i)
 
                     newlines += drawlines[i]
                 
                 #prime after drawing
                 newlines += ["G0 X" + str(lastlayerx) + " Y" + str(lastlayery) + " Z" + str(lastlayerz + 2.0), 
-                    "G0 X" + str(lastlayerx) + " Y" + str(lastlayery) + " Z" + str(lastlayerz) + " ;return to last pos after drawing"]
-                newlines += ["G1 F1500 E" + str(drawrectract), ""]
+                    "G0 X" + str(lastlayerx) + " Y" + str(lastlayery) + " Z" + str(lastlayerz) + " ; return to last pos after drawing"]
+                newlines += ["G1 F1500 E" + str(drawrectract), " ; unretract after drawing"]
 
             result = "\n".join(newlines)
             data[layer_number] = result
@@ -402,15 +443,19 @@ if runsStandalone == True:
     import argparse
 
     parser = argparse.ArgumentParser(description='Postprocess gcode file to add colors using pens.', exit_on_error=True)
-    parser.add_argument('-c', '--config', help='path to the config json file', required=True)
-    parser.add_argument('-i', '--input', help='path to the input gcode file', required=True)
-    parser.add_argument('-o', '--output', help='path to the output gcode file', required=False)
+    parser.add_argument('-c', '--config', help='path to the config json file.', required=False)
+    parser.add_argument('-i', '--input', help='path to the input gcode file.', required=True)
+    parser.add_argument('-o', '--output', help='path to the output gcode file. note: will be overwritten if it already exists.', required=False)
+    parser.add_argument('--overwrite', help='overwrites the original file if set. if not set, a .processed.gcode file will be created (and overwritten if existent). ignored when output is set.', default=False, required=False, action='store_true')
 
     args = parser.parse_args()
 
     configFilename = args.config
     inputFilename = args.input
     outputFilename = args.output
+    overwriteFile = args.overwrite
+
+#    inputFilename = str(getenv('SLIC3R_PP_OUTPUT_NAME'))
 
     # create script instance
     script = PenColorizer()
@@ -431,59 +476,72 @@ if runsStandalone == True:
         print("### Defaults will most likely not work for your printer and can damage your machine! ###")
         input("Press Enter to continue anyway...")
 
+    # Cura
+    #partStartDelimiters = [";LAYER:", ";Generated with"]
+    #partEndDelimiters = [";TIME_ELAPSED"]
+    #script.layerPartMarker = ";LAYER:"
+    #script.typeExcludedMarkers = 
+
+    # PrusaSlicer
+    partStartDelimiters = [";LAYER_CHANGE", "; generated by "]
+    partEndDelimiters = [";TYPE:Custom"]
+    script.layerPartMarker = ";LAYER_CHANGE"
+    script.typeIncludedMarkers = ["Top solid infill", "Perimeter", "External perimeter", "Solid infill"]
     
     # read input gcode file
     print("Running script on " + inputFilename)
     with open(inputFilename) as file:
         lines = file.readlines()
 
-    layersLineBuffers = []
+    filePartsLineBuffers = []
     lineBuffer = []
     for i in range(0, len(lines)):
         line = lines[i]
 
-        # check if a (virtual) layer starts here
-        # virtual layers are the comment block at the beginning and the start gcode sequence
-        isLayerStart = line.startswith(";LAYER:") or line.startswith(";Generated with")
-        isLayerEnd = line.startswith(";TIME_ELAPSED")
+        # check if a part starts here
+        # parts are layers and other file parts defined by cura, e.g. the comment block at the beginning and the start gcode sequence
+        isPartStart = next((l for l in partStartDelimiters if line.startswith(l)), None) != None
+        isPartEnd = next((l for l in partEndDelimiters if line.startswith(l)), None) != None
 
-        if isLayerStart or isLayerEnd:
-            if isLayerEnd:
+        if isPartStart or isPartEnd:
+            if isPartEnd:
                 lineBuffer.append(line)
             if len(lineBuffer) > 0:
-                layersLineBuffers.append(lineBuffer.copy())
+                filePartsLineBuffers.append(lineBuffer.copy())
                 lineBuffer.clear()
 
-        if not isLayerEnd:
+        if not isPartEnd:
             lineBuffer.append(line)
     
     if len(lineBuffer) > 0:
-        layersLineBuffers.append(lineBuffer.copy())
+        filePartsLineBuffers.append(lineBuffer.copy())
 
     # add comment stating this file was postprocessed
-    layersLineBuffers[0].insert(len(layersLineBuffers[0]), ";POSTPROCESSED\n")
+    filePartsLineBuffers[0].insert(len(filePartsLineBuffers[0]), ";POSTPROCESSED\n")
 
     # split fist line of last layer to its own layer so we conform with whatever cura does
-    lastLayerLineBuffer = layersLineBuffers[len(layersLineBuffers)-1].copy();
-    layersLineBuffers[len(layersLineBuffers)-1] = [lastLayerLineBuffer[0]]
-    lastLayerLineBuffer.remove(lastLayerLineBuffer[0])
-    layersLineBuffers.append(lastLayerLineBuffer)
+    lastFilePartLineBuffer = filePartsLineBuffers[len(filePartsLineBuffers)-1].copy();
+    filePartsLineBuffers[len(filePartsLineBuffers)-1] = [lastFilePartLineBuffer[0]]
+    lastFilePartLineBuffer.remove(lastFilePartLineBuffer[0])
+    filePartsLineBuffers.append(lastFilePartLineBuffer)
 
     # merge layer lines to string
     layers = []
-    for i in range(0, len(layersLineBuffers)):
-        layers.append("".join(layersLineBuffers[i]))
+    for i in range(0, len(filePartsLineBuffers)):
+        layers.append("".join(filePartsLineBuffers[i]))
 
 
     # execute script
     layers = script.execute(layers)
 
-
     # write output gcode file
     if outputFilename == None:
-        outputFilename = inputFilename.partition(".gcode")[0] + ".processed.gcode"
+        if overwriteFile:
+            outputFilename = inputFilename
+        else:
+            outputFilename = inputFilename.partition(".gcode")[0] + ".processed.gcode"
 
     print("Writing processed file to " + outputFilename);
-    with open(outputFilename, "w") as file:
+    with open(outputFilename, "w", newline='') as file:
         for i in range(0, len(layers)):
             file.write(layers[i])
